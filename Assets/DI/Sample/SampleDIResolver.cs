@@ -8,8 +8,8 @@ namespace DI.Sample
         public void Start()
         {
             var container = new Container();
-            container.Register<IEmailService, EmailService>();
-            container.Register<ICustomerService, CustomerService>();
+            container.RegisterTransient<IEmailService, EmailService>();
+            container.RegisterSingleton<ICustomerService>(new CustomerService());
 
             var customerService = container.Resolve<ICustomerService>();
 
