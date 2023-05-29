@@ -8,10 +8,26 @@ namespace DI
     public class Container : IContainer
     {
         private readonly Dictionary<Type, Type> _registeredTypes = new();
+        private readonly Dictionary<Type, object> _singletonInstances = new();
 
-        public void Register<TInterface, TImplementation>()
+        public void RegisterTransient<TInterface, TImplementation>()
         {
             _registeredTypes[typeof(TInterface)] = typeof(TImplementation);
+        }
+
+        public void RegisterSingleton<TInterface, TImplementation>()
+        {
+            _registeredTypes[typeof(TInterface)] = typeof(TImplementation);
+            
+            var instance = CreateInstance(typeof(TImplementation));
+            _singletonInstances[typeof(TInterface)] = instance;
+        }
+        
+        public void RegisterSingleton<TInterface>(object instance)
+        {
+            _registeredTypes[typeof(TInterface)] = instance.GetType();
+            
+            _singletonInstances[typeof(TInterface)] = instance;
         }
 
         public TInterface Resolve<TInterface>()
@@ -21,33 +37,44 @@ namespace DI
 
         private object Resolve(Type type)
         {
-            var implementationType = _registeredTypes[type];
-            var constructor = GetConstructorWithAttribute(implementationType);
+            if (_singletonInstances.TryGetValue(type, out var singletonInstance))
+            {
+                return singletonInstance;
+            }
+
+            var instance = CreateInstance(type);
+            InjectProperties(instance);
+
+            return instance;
+        }
+
+        private object CreateInstance(Type type)
+        {
+            var constructor = GetConstructorWithAttribute(type);
             var constructorParams = constructor.GetParameters();
 
             if (constructorParams.Length == 0)
             {
-                var instance = Activator.CreateInstance(implementationType);
-                InjectProperties(instance);
+                var instance = Activator.CreateInstance(type);
                 return instance;
             }
 
-            List<object> resolvedParams = new List<object>();
+            var resolvedParams = new List<object>();
 
-            foreach (ParameterInfo param in constructorParams)
+            foreach (var param in constructorParams)
             {
                 var paramType = param.ParameterType;
                 var resolvedParam = Resolve(paramType);
                 resolvedParams.Add(resolvedParam);
             }
 
-            return Activator.CreateInstance(implementationType, resolvedParams.ToArray());
+            return Activator.CreateInstance(type, resolvedParams.ToArray());
         }
 
         private ConstructorInfo GetConstructorWithAttribute(Type type)
         {
-            ConstructorInfo[] constructors = type.GetConstructors();
-            ConstructorInfo constructor =
+            var constructors = type.GetConstructors();
+            var constructor =
                 constructors.FirstOrDefault(c => c.GetCustomAttributes(typeof(InjectAttribute), true).Length > 0);
 
             if (constructor == null)
