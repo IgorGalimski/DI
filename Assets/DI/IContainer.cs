@@ -7,5 +7,7 @@ namespace DI
         void RegisterSingleton<TInterface>(object instance);
         
         TInterface Resolve<TInterface>();
+
+        void Unregister<TInterface>();
     }
 }

@@ -35,6 +35,20 @@ namespace DI
             return (TInterface)Resolve(typeof(TInterface));
         }
 
+        public void Unregister<TInterface>()
+        {
+            var type = typeof(TInterface);
+            if (_registeredTypes.ContainsKey(type))
+            {
+                _registeredTypes.Remove(type);
+            }
+
+            if (_singletonInstances.ContainsKey(type))
+            {
+                _singletonInstances.Remove(type);
+            }
+        }
+
         private object Resolve(Type type)
         {
             if (_singletonInstances.TryGetValue(type, out var singletonInstance))
